@@ -173,7 +173,7 @@
 		<!-- Header -->
 		<header class="mb-10 text-center">
 			<h1 class="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-				Mistral 3B Vision
+				Ministral 3B Vision
 			</h1>
 			<p class="mt-4 text-lg font-medium text-gray-500">
 				Local & private image analysis in your browser
