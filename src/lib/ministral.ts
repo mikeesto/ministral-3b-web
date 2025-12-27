@@ -88,7 +88,7 @@ export class MinistralEngine {
 				content:
 					'You are a helpful visual AI assistant. Respond concisely with text only, no markdown.'
 			},
-			{ role: 'user', content: `[IMG]${promptText}` }
+			{ role: 'user', content: `[IMG]\n${promptText}\n` }
 		];
 
 		const textInputs = this.processor.apply_chat_template(messages);
