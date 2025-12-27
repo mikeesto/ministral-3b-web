@@ -1,38 +1,31 @@
-# sv
+# ministral-3b-web
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A client-side interface for running batch image analysis using the Ministral 3B vision model.
 
-## Creating a project
+Upload a ZIP file containing multiple images, and each model will be run against the provided prompt. Results are displayed in a tabular format with the option to download the results as a CSV file.
 
-If you're seeing this, you've probably already done this step. Congrats!
+This project runs entirely in the browser using WebGPU. No images are sent to a server; the model download occurs once and is cached locally.
 
-```sh
-# create a new project in the current directory
-npx sv create
+### Prerequisites
 
-# create a new project in my-app
-npx sv create my-app
-```
+You will need a browser with **WebGPU support** enabled (e.g. recent versions of Chrome).
 
-## Developing
+### Development
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+1.  Clone the repository and install dependencies:
 
-```sh
-npm run dev
+    ```bash
+    npm install
+    ```
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+2.  Start the development server:
 
-## Building
+    ```bash
+    npm run dev
+    ```
 
-To create a production version of your app:
+3.  Open `http://localhost:5173` in your browser.
 
-```sh
-npm run build
-```
+The first time you load the model, the application will download approximately **3GB** of model weights. Subsequent loads will use the browser cache.
 
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Performance (tokens per second) varies based on your device's GPU capabilities.
