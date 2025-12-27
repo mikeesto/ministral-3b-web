@@ -1,11 +1,11 @@
-// src/lib/ministral.ts
 import {
 	AutoProcessor,
 	AutoModelForImageTextToText,
 	RawImage,
 	TextStreamer,
 	type PreTrainedModel,
-	type Processor
+	type Processor,
+	type ProgressInfo
 } from '@huggingface/transformers';
 
 const MODEL_ID = 'mistralai/Ministral-3-3B-Instruct-2512-ONNX';
@@ -26,10 +26,7 @@ export class MinistralEngine {
 			onProgress?.('Loading processor...', 10);
 			this.processor = await AutoProcessor.from_pretrained(MODEL_ID);
 
-			// Set optimal image size for the processor (matches React app)
-			// @ts-ignore - 'size' property exists on the image_processor
 			if (this.processor.image_processor) {
-				// @ts-ignore
 				this.processor.image_processor.size = { longest_edge: 480 };
 			}
 
@@ -43,7 +40,7 @@ export class MinistralEngine {
 					decoder_model_merged: 'q4f16'
 				},
 				device: 'webgpu',
-				progress_callback: (info: any) => {
+				progress_callback: (info: ProgressInfo) => {
 					if (info.status === 'progress' && info.file.endsWith('.onnx_data')) {
 						const p = 20 + (info.loaded / info.total) * 80;
 						onProgress?.('Downloading model...', p);
@@ -99,7 +96,7 @@ export class MinistralEngine {
 
 		// 3. Setup Streamer
 		let generatedText = '';
-		const streamer = new TextStreamer(this.processor.tokenizer, {
+		const streamer = new TextStreamer(this.processor.tokenizer!, {
 			skip_prompt: true,
 			skip_special_tokens: true,
 			callback_function: (token: string) => {
