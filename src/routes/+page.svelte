@@ -1,26 +1,18 @@
-<!-- src/routes/+page.svelte -->
 <script lang="ts">
 	import JSZip from 'jszip';
 	import { slide, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { ministral } from '$lib/ministral';
 
-	// UI State
-	let status = 'Ready to initialize';
-	let progress = 0;
-	let isModelReady = false;
-	let isProcessing = false;
-	let isDownloading = false;
-	let dragActive = false;
+	let isModelReady = $state(false);
+	let isProcessing = $state(false);
+	let isDownloading = $state(false);
+	let dragActive = $state(false);
 
-	// Data State
-	let prompt = 'Describe this image';
-	let results: Array<{ fileName: string; imageSrc: string; response: string }> = [];
+	let prompt = $state('Describe this image');
+	let results = $state<Array<{ fileName: string; imageSrc: string; response: string }>>([]);
 
-	// DOM Elements
-	let fileInput: HTMLInputElement;
-
-	// --- 1. Model Loader Logic ---
+	let fileInput = $state<HTMLInputElement>();
 
 	async function loadModel() {
 		if (ministral.isLoaded || isDownloading) return;
@@ -28,23 +20,17 @@
 		isDownloading = true;
 
 		try {
-			await ministral.load((msg, p) => {
-				status = msg;
-				progress = p;
-			});
+			await ministral.load();
 			isModelReady = true;
-			status = 'Model loaded successfully.';
 		} catch (e) {
-			status = 'Error loading model: ' + e;
-			isDownloading = false;
 			console.error(e);
+		} finally {
+			isDownloading = false;
 		}
 	}
 
-	// --- 2. File Handling (Dropzone & Input) ---
-
 	function triggerFileInput() {
-		fileInput.click();
+		fileInput?.click();
 	}
 
 	function handleDrag(e: DragEvent) {
@@ -77,7 +63,7 @@
 
 	async function processFile(file: File) {
 		if (!file.name.endsWith('.zip')) {
-			status = 'Please upload a valid .zip file';
+			alert('Please upload a valid ZIP file.');
 			return;
 		}
 
@@ -105,7 +91,6 @@
 										imageSrc,
 										response: ''
 									});
-									results = results; // trigger reactivity
 									resolve();
 								};
 								reader.readAsDataURL(blob);
@@ -116,14 +101,10 @@
 			});
 
 			await Promise.all(imagePromises);
-			status = `Loaded ${results.length} images ready for analysis.`;
 		} catch (e) {
-			status = 'Error parsing zip file: ' + e;
 			console.error(e);
 		}
 	}
-
-	// --- 3. Inference Logic ---
 
 	async function runInference() {
 		if (!results.length || !isModelReady) return;
@@ -141,25 +122,20 @@
 						try {
 							await ministral.generate(img, prompt, (updatedText) => {
 								results[i].response = updatedText;
-								results = results; // trigger reactivity
 							});
 						} catch (e) {
 							results[i].response = 'Error: ' + e;
-							results = results;
 						}
 						resolve();
 					};
 				});
 			}
-			status = 'Processing complete.';
 		} catch (e) {
-			status = 'Error during batch processing: ' + e;
+			console.error('Error during batch processing: ' + e);
 		} finally {
 			isProcessing = false;
 		}
 	}
-
-	// --- 4. Export Logic ---
 
 	function downloadCSV() {
 		if (!results.length) return;
@@ -188,6 +164,8 @@
 
 		URL.revokeObjectURL(url);
 	}
+
+	const hasResponses = $derived(results.some((r) => r.response));
 </script>
 
 <div class="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-indigo-100">
@@ -200,7 +178,7 @@
 			<p class="mt-4 text-lg font-medium text-gray-500">
 				Local & private image analysis in your browser
 			</p>
-			<p class="font-medium text-gray-500">Works best in Google Chrome (desktop)</p>
+			<p class="mt-2 font-medium text-gray-500">Works best in Google Chrome (desktop)</p>
 		</header>
 
 		<!-- SECTION: Model Loader (Slides away when ready) -->
@@ -220,31 +198,11 @@
 				</div>
 
 				<div class="p-8 text-center">
-					<p class="mb-6 text-gray-600">
-						To begin, we need to download the Ministral-3B model (~3GB). This happens once and is
-						stored in your browser cache.
-					</p>
-
-					{#if isDownloading}
-						<div class="mx-auto mb-6 w-full max-w-md">
-							<div
-								class="mb-2 flex justify-between text-xs font-semibold tracking-wider text-gray-500 uppercase"
-							>
-								<span>Downloading</span>
-								<span>{Math.round(progress)}%</span>
-							</div>
-							<div class="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-								<div
-									class="h-full bg-indigo-600 transition-all duration-200 ease-linear"
-									style="width: {progress}%"
-								></div>
-							</div>
-							<p class="mt-3 font-mono text-xs text-gray-400">{status}</p>
-						</div>
-					{/if}
+					<p class="mb-2 text-gray-600">Download the Ministral-3B model (~3GB).</p>
+					<p class="mb-6 text-gray-600">This happens once and is stored in your browser's cache.</p>
 
 					<button
-						on:click={loadModel}
+						onclick={loadModel}
 						disabled={isDownloading}
 						class="inline-flex cursor-pointer items-center justify-center rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-black hover:shadow-md disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
 					>
@@ -310,15 +268,19 @@
 						<label for="dropzone" class="mb-2 block text-sm font-medium text-gray-700"
 							>Upload Images (ZIP)</label
 						>
-						<!-- svelte-ignore a11y-click-events-have-key-events -->
 						<div
 							role="button"
 							tabindex="0"
-							on:click={triggerFileInput}
-							on:dragenter={handleDrag}
-							on:dragleave={handleDrag}
-							on:dragover={handleDrag}
-							on:drop={handleDrop}
+							onclick={triggerFileInput}
+							ondragenter={handleDrag}
+							ondragleave={handleDrag}
+							ondragover={handleDrag}
+							ondrop={handleDrop}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									triggerFileInput();
+								}
+							}}
 							class="group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 transition-all duration-200 ease-in-out
                             {dragActive
 								? 'border-indigo-500 bg-indigo-50/50'
@@ -329,7 +291,7 @@
 								type="file"
 								accept=".zip"
 								bind:this={fileInput}
-								on:change={handleFileSelect}
+								onchange={handleFileSelect}
 								class="hidden"
 								disabled={!isModelReady}
 							/>
@@ -378,9 +340,9 @@
 
 					<!-- Action Button -->
 					<button
-						on:click={runInference}
+						onclick={runInference}
 						disabled={!isModelReady || !results.length || isProcessing}
-						class="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+						class="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
 					>
 						{#if isProcessing}
 							<span class="flex items-center justify-center gap-2">
@@ -422,8 +384,8 @@
 								>
 							</h3>
 							<button
-								on:click={downloadCSV}
-								disabled={!results.some((r) => r.response)}
+								onclick={downloadCSV}
+								disabled={!hasResponses}
 								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
 							>
 								<svg
