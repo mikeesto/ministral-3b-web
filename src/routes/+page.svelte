@@ -9,6 +9,9 @@
 	let isDownloading = $state(false);
 	let dragActive = $state(false);
 
+	let loadProgress = $state(0);
+	let loadStatus = $state('Initiating...');
+
 	let prompt = $state('Describe this image');
 	let results = $state<Array<{ fileName: string; imageSrc: string; response: string }>>([]);
 
@@ -20,11 +23,14 @@
 		isDownloading = true;
 
 		try {
-			await ministral.load();
+			await ministral.load((msg, percentage) => {
+				loadStatus = msg;
+				loadProgress = Math.round(percentage);
+			});
 			isModelReady = true;
 		} catch (e) {
 			console.error(e);
-		} finally {
+			alert('Failed to load model. Check console for details.');
 			isDownloading = false;
 		}
 	}
@@ -198,38 +204,50 @@
 				</div>
 
 				<div class="p-8 text-center">
-					<p class="mb-2 text-gray-600">Download the Ministral-3B model (~3GB).</p>
+					<p class="mb-2 text-gray-600">Download the Ministral-3B model.</p>
 					<p class="mb-6 text-gray-600">This happens once and is stored in your browser's cache.</p>
 
 					<button
 						onclick={loadModel}
 						disabled={isDownloading}
-						class="inline-flex cursor-pointer items-center justify-center rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-black hover:shadow-md disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
+						class="relative inline-flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-gray-900 px-6 py-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-black hover:shadow-md disabled:cursor-not-allowed disabled:shadow-none"
 					>
 						{#if isDownloading}
-							<svg
-								class="mr-2 -ml-1 h-4 w-4 animate-spin text-gray-400"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-							>
-								<circle
-									class="opacity-25"
-									cx="12"
-									cy="12"
-									r="10"
-									stroke="currentColor"
-									stroke-width="4"
-								></circle>
-								<path
-									class="opacity-75"
-									fill="currentColor"
-									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-								></path>
-							</svg>
-							Loading Model...
+							<!-- Progress Bar Background -->
+							<div
+								class="absolute top-0 left-0 h-full bg-gray-700 transition-all duration-300 ease-out"
+								style="width: {loadProgress}%"
+							></div>
+
+							<!-- Content (sitting on top of progress bar) -->
+							<div class="relative z-10 flex items-center gap-3">
+								{#if loadProgress < 99}
+									<svg
+										class="h-4 w-4 animate-spin text-gray-400"
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+									>
+										<circle
+											class="opacity-25"
+											cx="12"
+											cy="12"
+											r="10"
+											stroke="currentColor"
+											stroke-width="4"
+										></circle>
+										<path
+											class="opacity-75"
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+										></path>
+									</svg>
+								{/if}
+								<span class="font-mono">{loadProgress}%</span>
+								<span class="border-l border-gray-600 pl-3 text-gray-300">{loadStatus}</span>
+							</div>
 						{:else}
-							Download & Load Model
+							Download & Load Model (~3GB)
 						{/if}
 					</button>
 				</div>

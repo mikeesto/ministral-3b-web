@@ -21,9 +21,12 @@ export class MinistralEngine {
 		if (this.isLoaded) return;
 		this.isLoading = true;
 
+		// Track max progress to prevent UI jitter
+		let maxProgress = 0;
+
 		try {
 			// 1. Load Processor
-			onProgress?.('Loading processor...', 10);
+			onProgress?.('Initializing...', 5);
 			this.processor = await AutoProcessor.from_pretrained(MODEL_ID);
 
 			if (this.processor.image_processor) {
@@ -31,7 +34,7 @@ export class MinistralEngine {
 			}
 
 			// 2. Load Model
-			onProgress?.('Loading model (this may take a while)...', 20);
+			onProgress?.('Preparing model...', 10);
 
 			this.model = await AutoModelForImageTextToText.from_pretrained(MODEL_ID, {
 				dtype: {
@@ -41,9 +44,22 @@ export class MinistralEngine {
 				},
 				device: 'webgpu',
 				progress_callback: (info: ProgressInfo) => {
-					if (info.status === 'progress' && info.file.endsWith('.onnx_data')) {
-						const p = 20 + (info.loaded / info.total) * 80;
-						onProgress?.('Downloading model...', p);
+					// Only update UI for the actual download progress
+					if (info.status === 'progress') {
+						// The 'decoder' .onnx_data file is the huge ~3GB one.
+						// We ignore the smaller files (like tokenizer.json) to prevent the bar jumping.
+						if (info.file.includes('decoder') && info.file.endsWith('.onnx_data')) {
+							const pct = info.loaded / info.total;
+
+							// Map this file's progress (0-100%) to the UI's (10-100%)
+							const currentProgress = 10 + pct * 90;
+
+							// Prevent backward jumps
+							if (currentProgress > maxProgress) {
+								maxProgress = currentProgress;
+								onProgress?.('Downloading weights (~3GB)...', maxProgress);
+							}
+						}
 					}
 				}
 			});
