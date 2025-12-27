@@ -1,8 +1,8 @@
 # ministral-3b-web
 
-A client-side interface for running batch image analysis using the Ministral 3B vision model.
+Run batch image analysis using the [Ministral-3-3B-Instruct-2512-ONNX](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX) model in the browser.
 
-Upload a ZIP file containing multiple images, and each model will be run against the provided prompt. Results are displayed in a tabular format with the option to download the results as a CSV file.
+Upload a ZIP file containing multiple images, and each image will be run against the provided prompt. Results are displayed in a tabular format with the option to download the results as a CSV file.
 
 This project runs entirely in the browser using WebGPU. No images are sent to a server; the model download occurs once and is cached locally.
 
